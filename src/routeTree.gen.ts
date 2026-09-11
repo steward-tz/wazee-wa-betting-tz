@@ -10,33 +10,73 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ArifaRouteImport } from './routes/arifa'
+import { Route as HudumaRouteImport } from './routes/huduma'
+import { Route as MsaadaRouteImport } from './routes/msaada'
+import { Route as WatejaRouteImport } from './routes/wateja'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ArifaRoute = ArifaRouteImport.update({
+  id: '/arifa',
+  path: '/arifa',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HudumaRoute = HudumaRouteImport.update({
+  id: '/huduma',
+  path: '/huduma',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MsaadaRoute = MsaadaRouteImport.update({
+  id: '/msaada',
+  path: '/msaada',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WatejaRoute = WatejaRouteImport.update({
+  id: '/wateja',
+  path: '/wateja',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/arifa': typeof ArifaRoute
+  '/huduma': typeof HudumaRoute
+  '/msaada': typeof MsaadaRoute
+  '/wateja': typeof WatejaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/arifa': typeof ArifaRoute
+  '/huduma': typeof HudumaRoute
+  '/msaada': typeof MsaadaRoute
+  '/wateja': typeof WatejaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/arifa': typeof ArifaRoute
+  '/huduma': typeof HudumaRoute
+  '/msaada': typeof MsaadaRoute
+  '/wateja': typeof WatejaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/arifa' | '/huduma' | '/msaada' | '/wateja'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/arifa' | '/huduma' | '/msaada' | '/wateja'
+  id: '__root__' | '/' | '/arifa' | '/huduma' | '/msaada' | '/wateja'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ArifaRoute: typeof ArifaRoute
+  HudumaRoute: typeof HudumaRoute
+  MsaadaRoute: typeof MsaadaRoute
+  WatejaRoute: typeof WatejaRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +88,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/arifa': {
+      id: '/arifa'
+      path: '/arifa'
+      fullPath: '/arifa'
+      preLoaderRoute: typeof ArifaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/huduma': {
+      id: '/huduma'
+      path: '/huduma'
+      fullPath: '/huduma'
+      preLoaderRoute: typeof HudumaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/msaada': {
+      id: '/msaada'
+      path: '/msaada'
+      fullPath: '/msaada'
+      preLoaderRoute: typeof MsaadaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wateja': {
+      id: '/wateja'
+      path: '/wateja'
+      fullPath: '/wateja'
+      preLoaderRoute: typeof WatejaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ArifaRoute: ArifaRoute,
+  HudumaRoute: HudumaRoute,
+  MsaadaRoute: MsaadaRoute,
+  WatejaRoute: WatejaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -976,6 +976,20 @@ select:focus-visible {
 .full {
   width: 100%;
 }
+.primary-button:disabled,
+.ghost-button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.modal-error {
+  color: #ff9b8d;
+  background: #421e1b;
+  border: 1px solid #9e4b40;
+  border-radius: 7px;
+  padding: 9px;
+  font-size: 10px;
+  line-height: 1.4;
+}
 .modal-foot {
   text-align: center;
   color: var(--muted);

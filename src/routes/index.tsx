@@ -1,6 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import type { User } from "firebase/auth";
+import {
+  loginWithGoogle,
+  loginWithEmail,
+  logout,
+  registerWithEmail,
+  saveBettingDraft,
+  subscribeToAuth,
+} from "../lib/firebase";
 import {
   ArrowUpRight,
   BarChart3,
@@ -110,6 +119,8 @@ function BettingHome() {
   const [showTicket, setShowTicket] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [selections, setSelections] = useState<string[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  useEffect(() => subscribeToAuth(setUser), []);
   const filteredTickets = useMemo(
     () =>
       tickets.filter((t) =>
@@ -199,8 +210,8 @@ function BettingHome() {
             <button className="profile-button" onClick={() => setShowLogin(true)}>
               <span className="avatar small">SW</span>
               <span className="profile-copy">
-                <b>Karibu</b>
-                <small>Ingia / Jisajili</small>
+                <b>{user?.displayName || "Karibu"}</b>
+                <small>{user ? "Akaunti yangu" : "Ingia / Jisajili"}</small>
               </span>
               <ChevronDown size={15} />
             </button>
@@ -498,10 +509,15 @@ function BettingHome() {
         <TicketModal
           selections={selections}
           totalOdds={totalOdds}
+          user={user}
           onClose={() => setShowTicket(false)}
+          onRequireLogin={() => {
+            setShowTicket(false);
+            setShowLogin(true);
+          }}
         />
       )}
-      {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+      {showLogin && <LoginModal user={user} onClose={() => setShowLogin(false)} onUser={setUser} />}
     </div>
   );
 }
@@ -534,12 +550,18 @@ function Stat({
 function TicketModal({
   selections,
   totalOdds,
+  user,
   onClose,
+  onRequireLogin,
 }: {
   selections: string[];
   totalOdds: number;
+  user: User | null;
   onClose: () => void;
+  onRequireLogin: () => void;
 }) {
+  const [title, setTitle] = useState("");
+  const [saving, setSaving] = useState(false);
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -561,7 +583,11 @@ function TicketModal({
         </div>
         <label>
           Kichwa cha mkeka
-          <input placeholder="Mfano: Weekend ya uhakika" />
+          <input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="Mfano: Weekend ya uhakika"
+          />
         </label>
         <div className="modal-selections">
           <div className="label-row">
@@ -585,16 +611,74 @@ function TicketModal({
         </div>
         <button
           className="primary-button full"
-          onClick={() => toast.info("Usajili unahitajika kabla ya kuchapisha mkeka.")}
+          disabled={saving}
+          onClick={async () => {
+            if (!user) {
+              onRequireLogin();
+              return;
+            }
+            setSaving(true);
+            try {
+              await saveBettingDraft(user.uid, {
+                title: title.trim() || "Mkeka mpya",
+                selections,
+                totalOdds,
+              });
+              toast.success("Mkeka umehifadhiwa kwenye akaunti yako.");
+              onClose();
+            } catch (error) {
+              toast.error(
+                error instanceof Error ? error.message : "Imeshindikana kuhifadhi mkeka.",
+              );
+            } finally {
+              setSaving(false);
+            }
+          }}
         >
-          Hifadhi kama draft <ArrowUpRight size={16} />
+          {saving ? "Inahifadhi..." : "Hifadhi kama draft"} <ArrowUpRight size={16} />
         </button>
-        <p className="modal-foot">Hutaweza kuchapisha mkeka bila kuingia kwenye akaunti.</p>
+        <p className="modal-foot">
+          {user
+            ? "Draft itaonekana kwenye akaunti yako."
+            : "Ingia ili kuhifadhi mkeka wako kwenye Firestore."}
+        </p>
       </div>
     </div>
   );
 }
-function LoginModal({ onClose }: { onClose: () => void }) {
+function LoginModal({
+  user,
+  onClose,
+  onUser,
+}: {
+  user: User | null;
+  onClose: () => void;
+  onUser: (user: User | null) => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [registering, setRegistering] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  if (user) {
+    return (
+      <div className="modal-backdrop" onClick={onClose}>
+        <div className="modal login-modal" onClick={(event) => event.stopPropagation()}>
+          <button className="modal-close" onClick={onClose}>
+            <X size={19} />
+          </button>
+          <div className="login-mark">W</div>
+          <span className="section-kicker">AKAUNTI YAKO</span>
+          <h2>{user.displayName || user.email}</h2>
+          <p>{user.email}</p>
+          <button className="primary-button full" onClick={() => logout().then(() => onUser(null))}>
+            Toka kwenye akaunti
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal login-modal" onClick={(e) => e.stopPropagation()}>
@@ -605,27 +689,77 @@ function LoginModal({ onClose }: { onClose: () => void }) {
         <span className="section-kicker">KARIBU KWENYE JAMII</span>
         <h2>Ingia kwenye akaunti</h2>
         <p>Unda mikeka, fuatilia creators na shiriki tips zako.</p>
+        {registering && (
+          <label>
+            Jina lako
+            <input
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              placeholder="Mzee wa Odds"
+            />
+          </label>
+        )}
         <label>
-          Barua pepe au username
-          <input placeholder="username@mfano.com" />
+          Barua pepe
+          <input
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="username@mfano.com"
+            type="email"
+          />
         </label>
         <label>
           Password
-          <input type="password" placeholder="••••••••" />
+          <input
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            type="password"
+            placeholder="••••••••"
+          />
         </label>
+        {error && <p className="modal-error">{error}</p>}
         <button
           className="primary-button full"
-          onClick={() =>
-            toast.info("Authentication ya production itaunganishwa na provider salama.")
-          }
+          disabled={loading}
+          onClick={async () => {
+            setError("");
+            setLoading(true);
+            try {
+              const account = registering
+                ? await registerWithEmail(email, password, displayName)
+                : await loginWithEmail(email, password);
+              onUser(account);
+              toast.success(registering ? "Akaunti imetengenezwa." : "Umeingia kwa mafanikio.");
+              onClose();
+            } catch (authError) {
+              setError(authError instanceof Error ? authError.message : "Imeshindikana kuingia.");
+            } finally {
+              setLoading(false);
+            }
+          }}
         >
-          <LogIn size={16} /> Ingia
+          <LogIn size={16} /> {loading ? "Inasubiri..." : registering ? "Jisajili" : "Ingia"}
         </button>
         <button
-          className="link-button"
-          onClick={() => toast.info("Usajili utafunguliwa baada ya database/auth kuwekwa.")}
+          className="ghost-button full"
+          disabled={loading}
+          onClick={async () => {
+            setError("");
+            try {
+              const account = await loginWithGoogle();
+              onUser(account);
+              onClose();
+            } catch (authError) {
+              setError(
+                authError instanceof Error ? authError.message : "Google sign-in imeshindikana.",
+              );
+            }
+          }}
         >
-          Huna akaunti? Jisajili
+          Endelea na Google
+        </button>
+        <button className="link-button" onClick={() => setRegistering((value) => !value)}>
+          {registering ? "Tayari una akaunti? Ingia" : "Huna akaunti? Jisajili"}
         </button>
       </div>
     </div>

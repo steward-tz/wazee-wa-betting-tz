@@ -1,24 +1,31 @@
-# Project Show
+# Wazee wa Betting TZ
 
-umeona mradi wangu katika gthub
+Jukwaa la Tanzania la betting tips, mikeka na community ya michezo.
 
-This project was built with [Lovable](https://lovable.dev).
+## Hali ya sasa
 
-## Build with Lovable
+- Dashboard mpya, mobile-first na responsive
+- Community picks, mechi za leo, leaderboard na responsible betting guidance
+- Ticket builder ya kuanza kuchagua selections na kuhesabu total odds
+- Login/ticket states ziko tayari kuunganishwa na authentication provider
+- Hakuna matokeo ya michezo yaliyobuniwa; sports results zitaingia kupitia API ya server-side
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/535d0cf2-c18b-441d-bf5c-110f24bff142).
+## Kuendesha locally
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+```bash
+pnpm install
+pnpm run dev
 ```
+
+## Production integrations zinazohitajika
+
+Ili kukamilisha platform ya production kulingana na brief, ongeza backend/database/auth na secrets hizi kupitia hosting provider (usiweke kwenye frontend):
+
+```env
+SPORTS_API_KEY=
+SPORTS_API_BASE_URL=
+DATABASE_URL=
+AUTH_SECRET=
+```
+
+Sports API service inapaswa kuhifadhi `event_id`, league/team IDs na match time kabla ya settlement engine ku-settle selections. Status ya WON/LOST haipaswi kuwekwa bila final result kutoka source hiyo.

@@ -1,254 +1,633 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, MessageCircle, Search } from "lucide-react";
-
-import { PortalShell } from "@/components/portal/shell";
-import { ServiceCard } from "@/components/portal/service-card";
-import { serviceCatalog, specialServices, whatsappUrl } from "@/lib/catalog";
-
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import {
+  ArrowUpRight,
+  BarChart3,
+  Bell,
+  Bookmark,
+  CalendarDays,
+  ChevronDown,
+  CircleHelp,
+  Filter,
+  Heart,
+  LayoutDashboard,
+  LogIn,
+  Menu,
+  MessageCircle,
+  Plus,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  Trophy,
+  Users,
+  X,
+  Zap,
+} from "lucide-react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Huduma za Mtandaoni — Huduma za kiraia mtandaoni" },
+      { title: "Wazee wa Betting TZ — Tips, mikeka na jamii ya michezo" },
       {
         name: "description",
         content:
-          "Pata huduma za kiraia mtandaoni — NIDA, TIN, leseni, vyeti na zaidi. Haraka, salama, kwa tokeni.",
+          "Jukwaa la Tanzania la kushiriki betting tips, mikeka na takwimu za michezo kwa uwazi.",
       },
-      { property: "og:title", content: "Huduma za Mtandaoni — Huduma za kiraia mtandaoni" },
-      {
-        property: "og:description",
-        content: "Pata huduma za kiraia mtandaoni — NIDA, TIN, leseni, vyeti na zaidi.",
-      },
+      { property: "og:title", content: "Wazee wa Betting TZ" },
+      { property: "og:description", content: "Tips, mikeka na jamii ya michezo Tanzania." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: HomePage,
+  component: BettingHome,
 });
-
-const announcements = [
+type Ticket = {
+  id: number;
+  creator: string;
+  avatar: string;
+  title: string;
+  league: string;
+  odds: number;
+  risk: string;
+  picks: string[];
+  likes: number;
+  comments: number;
+  status: "PENDING" | "WON";
+};
+const tickets: Ticket[] = [
   {
-    day: "18",
-    month: "Julai",
-    title: "Matengenezo ya mfumo — huduma zimesimama kwa muda",
-    body: "Tunaboresha usalama wa usajili. Huduma zitarudi saa 4 jioni.",
+    id: 1,
+    creator: "Mzee wa Odds",
+    avatar: "MO",
+    title: "Weekend ya uhakika",
+    league: "Premier League",
+    odds: 4.82,
+    risk: "Kati",
+    picks: ["Arsenal — 1X", "Liverpool — Over 1.5", "Chelsea — GG"],
+    likes: 128,
+    comments: 24,
+    status: "PENDING",
   },
   {
-    day: "09",
-    month: "Julai",
-    title: "Njia mpya ya kupata huduma za pasipoti",
-    body: "Sasa unaweza kufuatilia ombi lako la safari kabla ya kwenda ofisini.",
+    id: 2,
+    creator: "Bongo Predictor",
+    avatar: "BP",
+    title: "Mchanganyiko wa leo",
+    league: "La Liga · Serie A",
+    odds: 7.15,
+    risk: "Juu",
+    picks: ["Real Madrid — Win", "Inter — 1X", "Barcelona — Over 2.5"],
+    likes: 94,
+    comments: 18,
+    status: "WON",
   },
   {
-    day: "27",
-    month: "Juni",
-    title: "Punguzo la huduma za familia",
-    body: "Punguzo la asilimia 15 kwa huduma kadhaa za familia. Tumia sasa.",
+    id: 3,
+    creator: "Captain Tips",
+    avatar: "CT",
+    title: "Safe picks",
+    league: "CAF · EPL",
+    odds: 2.36,
+    risk: "Ndogo",
+    picks: ["Simba — 1X", "Man City — Win"],
+    likes: 76,
+    comments: 11,
+    status: "PENDING",
   },
 ];
-
-function HomePage() {
-  const featured = serviceCatalog.slice(0, 7);
-
+const matches = [
+  { time: "15:00", home: "Arsenal", away: "Brighton", league: "Premier League", code: "EPL" },
+  { time: "18:30", home: "Simba SC", away: "Yanga SC", league: "NBC Premier League", code: "TZ" },
+  { time: "21:00", home: "Barcelona", away: "Sevilla", league: "La Liga", code: "LAL" },
+];
+function BettingHome() {
+  const [active, setActive] = useState("Nyumbani");
+  const [query, setQuery] = useState("");
+  const [sport, setSport] = useState("Zote");
+  const [liked, setLiked] = useState<number[]>([]);
+  const [saved, setSaved] = useState<number[]>([]);
+  const [showTicket, setShowTicket] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [selections, setSelections] = useState<string[]>([]);
+  const filteredTickets = useMemo(
+    () =>
+      tickets.filter((t) =>
+        `${t.title} ${t.creator} ${t.league}`.toLowerCase().includes(query.toLowerCase()),
+      ),
+    [query],
+  );
+  const totalOdds = selections.reduce(
+    (total, item) =>
+      total * (item.includes("Arsenal") ? 1.75 : item.includes("Simba") ? 1.42 : 1.65),
+    1,
+  );
+  const addSelection = (label: string) => {
+    if (!selections.includes(label)) {
+      setSelections([...selections, label]);
+      toast.success("Selection imeongezwa kwenye mkeka");
+    }
+  };
   return (
-    <PortalShell>
-      {/* Topbar */}
-      <header className="flex items-center justify-between border-b border-border bg-card/60 px-6 py-5 lg:px-10">
-        <div>
-          <p className="font-display text-lg font-semibold">Habari, karibu</p>
-          <p className="text-xs text-muted-foreground">Huduma zote zinafanya kazi</p>
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand-mark">W</div>
+          <div>
+            <strong>WAZEE WA</strong>
+            <span>BETTING TZ</span>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Link
-            to="/huduma"
-            className="hidden items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground/70 transition-colors hover:bg-accent sm:flex"
-          >
-            <Search size={15} /> Tafuta huduma…
-          </Link>
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="brand-gradient rounded-xl px-4 py-2 text-sm font-semibold text-white"
-          >
-            Nunua tokeni
-          </a>
+        <div className="live-pill">
+          <span /> Mfumo uko hewani
         </div>
-      </header>
-
-      <div className="max-w-[1400px] space-y-8 px-6 py-8 lg:px-10">
-        {/* Hero */}
-        <section className="lagoon-hero relative rounded-3xl p-8 lg:p-10">
-          <div className="relative z-10 max-w-xl">
-            <span className="inline-block rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
-              Mfumo wa huduma mtandaoni
-            </span>
-            <h1 className="mt-4 font-display text-3xl font-semibold leading-[1.1] text-white lg:text-[2.6rem]">
-              Huduma za kiraia, mtandaoni kwa urahisi.
-            </h1>
-            <p className="mt-3 max-w-md text-sm text-white/85">
-              Nunua tokeni, chagua huduma, na kamilisha kwa dakika chache — bila safari hadi ofisini.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                to="/huduma"
-                className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-ink shadow-sm"
-              >
-                Anza huduma
-              </Link>
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-xl border border-white/30 bg-white/15 px-5 py-3 text-sm font-semibold text-white"
-              >
-                Nunua tokeni
-              </a>
-            </div>
-          </div>
-
-          <div className="relative z-10 mt-10 flex items-end justify-between lg:mt-8">
-            <div className="min-w-[220px] rounded-2xl bg-white/90 px-6 py-5 shadow-lg">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-brand-deep/70">
-                Salio la tokeni
-              </p>
-              <p className="mt-1 font-display text-3xl font-bold text-ink">0 tokeni</p>
-              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-accent">
-                <div className="h-full w-[8%] rounded-full bg-gradient-to-r from-lagoon to-coral" />
-              </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Ingia au nunua tokeni ili kuanza
-              </p>
-            </div>
-            <div className="hidden text-right text-xs leading-relaxed text-white/90 sm:block">
-              <p className="font-display text-sm font-semibold text-white">
-                {serviceCatalog.length} huduma
-              </p>
-              <p className="text-white/70">zipo mtandaoni</p>
-            </div>
-          </div>
-        </section>
-
-        {/* Services */}
-        <section>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-display text-xl font-semibold">Huduma zilizopo</h2>
-            <Link to="/huduma" className="text-sm font-semibold text-brand-deep hover:underline">
-              Zote →
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {featured.map((service, i) => (
-              <ServiceCard key={service.slug} service={service} variant={i} />
-            ))}
-            <Link
-              to="/huduma"
-              className="group flex flex-col items-center justify-center rounded-2xl border border-dashed border-primary/40 p-5 text-center transition hover:bg-accent"
+        <nav className="side-nav">
+          {[
+            { label: "Nyumbani", icon: LayoutDashboard },
+            { label: "Tips", icon: Target },
+            { label: "Mechi", icon: CalendarDays },
+            { label: "Leaderboard", icon: Trophy },
+            { label: "Jamii", icon: Users },
+          ].map(({ label, icon: Icon }) => (
+            <button
+              key={label}
+              onClick={() => setActive(label)}
+              className={active === label ? "nav-item active" : "nav-item"}
             >
-              <div className="grid size-11 place-items-center rounded-xl bg-primary/10 text-xl font-display font-bold text-brand-deep">
-                +
-              </div>
-              <p className="mt-4 text-sm font-semibold">Huduma zaidi</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {serviceCatalog.length - featured.length} zaidi zipo
-              </p>
-            </Link>
+              <Icon size={18} />
+              <span>{label}</span>
+              {label === "Tips" && <em>12</em>}
+            </button>
+          ))}
+        </nav>
+        <div className="side-card">
+          <Sparkles size={18} />
+          <strong>Jiunge na jamii</strong>
+          <p>Unda mkeka wako na uwashirikishe wengine.</p>
+          <button onClick={() => setShowTicket(true)}>
+            Anza mkeka <ArrowUpRight size={15} />
+          </button>
+        </div>
+        <div className="sidebar-foot">
+          <button>
+            <CircleHelp size={17} /> Msaada
+          </button>
+          <button>
+            <ShieldCheck size={17} /> Uwajibikaji
+          </button>
+        </div>
+      </aside>
+      <main className="main-content">
+        <header className="topbar">
+          <button className="mobile-menu">
+            <Menu size={20} />
+          </button>
+          <div className="search-box">
+            <Search size={17} />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Tafuta tips, watumiaji au ligi..."
+            />
+            <kbd>⌘ K</kbd>
           </div>
-        </section>
-
-        {/* Announcements + WhatsApp CTA */}
-        <section className="grid gap-6 lg:grid-cols-3">
-          <div className="rounded-3xl border border-border bg-card p-6 lg:col-span-2">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-lg font-semibold">Matukio na arifa</h2>
-              <Link
-                to="/arifa"
-                className="rounded-full bg-coral-soft px-3 py-1 text-xs font-semibold text-coral"
-              >
-                Zote
-              </Link>
+          <div className="top-actions">
+            <button className="icon-button">
+              <Bell size={18} />
+              <i />
+            </button>
+            <button className="profile-button" onClick={() => setShowLogin(true)}>
+              <span className="avatar small">SW</span>
+              <span className="profile-copy">
+                <b>Karibu</b>
+                <small>Ingia / Jisajili</small>
+              </span>
+              <ChevronDown size={15} />
+            </button>
+          </div>
+        </header>
+        <div className="content-wrap">
+          <section className="hero">
+            <div className="hero-copy">
+              <span className="eyebrow">
+                <Zap size={14} /> Jukwaa la tips Tanzania
+              </span>
+              <h1>
+                Cheza kwa <span>maarifa.</span>
+                <br />
+                Shinda kwa nidhamu.
+              </h1>
+              <p>
+                Gundua tips zinazoshirikishwa na jamii, tengeneza mikeka yako na fuatilia matokeo
+                kwa uwazi.
+              </p>
+              <div className="hero-actions">
+                <button className="primary-button" onClick={() => setShowTicket(true)}>
+                  Tengeneza mkeka <Plus size={17} />
+                </button>
+                <button className="ghost-button" onClick={() => setActive("Tips")}>
+                  Angalia tips <ArrowUpRight size={17} />
+                </button>
+              </div>
             </div>
-            <div className="space-y-3">
-              {announcements.map((item) => (
-                <div key={item.title} className="flex gap-4 rounded-2xl bg-background/70 p-4">
-                  <div className="w-14 shrink-0 text-center">
-                    <p className="font-display text-lg font-bold text-brand-deep">{item.day}</p>
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      {item.month}
-                    </p>
+            <div className="hero-art">
+              <div className="hero-orb orb-one" />
+              <div className="hero-orb orb-two" />
+              <div className="score-float">
+                <div className="mini-icon green">
+                  <Trophy size={15} />
+                </div>
+                <div>
+                  <small>Win rate ya jamii</small>
+                  <strong>68.4%</strong>
+                </div>
+                <span>+4.2%</span>
+              </div>
+              <div className="hero-ball">
+                W<span>+</span>
+              </div>
+            </div>
+          </section>
+          <div className="stats-row">
+            <Stat icon={Users} value="12.8K" label="Wanajamii" trend="+18% mwezi huu" />
+            <Stat
+              icon={Target}
+              value="68.4%"
+              label="Win rate ya jamii"
+              trend="Imethibitishwa"
+              green
+            />
+            <Stat icon={Trophy} value="4,291" label="Mikeka iliyoshinda" trend="Wiki hii" />
+            <Stat icon={BarChart3} value="2.84" label="Wastani wa odds" trend="Tips zote" />
+          </div>
+          <section className="section-block">
+            <div className="section-heading">
+              <div>
+                <span className="section-kicker">LIVE BOARD</span>
+                <h2>Mechi za leo</h2>
+              </div>
+              <button className="text-button" onClick={() => setActive("Mechi")}>
+                Ratiba yote <ArrowUpRight size={15} />
+              </button>
+            </div>
+            <div className="match-strip">
+              {matches.map((match) => (
+                <button
+                  key={match.home}
+                  className="match-card"
+                  onClick={() => addSelection(`${match.home} — Win`)}
+                >
+                  <div className="match-meta">
+                    <span>{match.league}</span>
+                    <b>{match.time}</b>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold">{item.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{item.body}</p>
+                  <div className="teams">
+                    <span>{match.home}</span>
+                    <strong>vs</strong>
+                    <span>{match.away}</span>
                   </div>
+                  <div className="match-cta">
+                    <span className="league-code">{match.code}</span>
+                    <span>
+                      + ongeza <Plus size={13} />
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+          <section className="section-block">
+            <div className="section-heading">
+              <div>
+                <span className="section-kicker">COMMUNITY PICKS</span>
+                <h2>Tips za jamii</h2>
+              </div>
+              <div className="filter-row">
+                <div className="select-wrap">
+                  <Filter size={14} />
+                  <select value={sport} onChange={(e) => setSport(e.target.value)}>
+                    <option>Zote</option>
+                    <option>Football</option>
+                    <option>Basketball</option>
+                  </select>
+                </div>
+                <button className="text-button" onClick={() => setActive("Tips")}>
+                  Tazama zote <ArrowUpRight size={15} />
+                </button>
+              </div>
+            </div>
+            <div className="ticket-grid">
+              {filteredTickets.map((ticket) => (
+                <article className="ticket-card" key={ticket.id}>
+                  <div className="ticket-top">
+                    <div className="creator">
+                      <span className="avatar">{ticket.avatar}</span>
+                      <div>
+                        <b>{ticket.creator}</b>
+                        <small>{ticket.league} · Dakika 24 zilizopita</small>
+                      </div>
+                    </div>
+                    <button className="more-button">•••</button>
+                  </div>
+                  <div className="ticket-title">
+                    <h3>{ticket.title}</h3>
+                    <span className={ticket.status === "WON" ? "status won" : "status pending"}>
+                      {ticket.status === "WON" ? "✓ WON" : "◷ PENDING"}
+                    </span>
+                  </div>
+                  <div className="picks">
+                    {ticket.picks.map((pick) => (
+                      <button key={pick} onClick={() => addSelection(pick)}>
+                        <span>{pick.split(" — ")[0]}</span>
+                        <b>{pick.split(" — ")[1]}</b>
+                        <Plus size={14} />
+                      </button>
+                    ))}
+                  </div>
+                  <div className="ticket-bottom">
+                    <div>
+                      <small>Total odds</small>
+                      <strong>{ticket.odds.toFixed(2)}</strong>
+                    </div>
+                    <div>
+                      <small>Risk</small>
+                      <strong
+                        className={
+                          ticket.risk === "Ndogo"
+                            ? "risk-low"
+                            : ticket.risk === "Juu"
+                              ? "risk-high"
+                              : "risk-mid"
+                        }
+                      >
+                        {ticket.risk}
+                      </strong>
+                    </div>
+                    <div className="engagement">
+                      <button
+                        onClick={() =>
+                          setLiked((current) =>
+                            current.includes(ticket.id)
+                              ? current.filter((x) => x !== ticket.id)
+                              : [...current, ticket.id],
+                          )
+                        }
+                        className={liked.includes(ticket.id) ? "engaged" : ""}
+                      >
+                        <Heart
+                          size={15}
+                          fill={liked.includes(ticket.id) ? "currentColor" : "none"}
+                        />{" "}
+                        {ticket.likes + (liked.includes(ticket.id) ? 1 : 0)}
+                      </button>
+                      <button>
+                        <MessageCircle size={15} /> {ticket.comments}
+                      </button>
+                      <button
+                        onClick={() =>
+                          setSaved((current) =>
+                            current.includes(ticket.id)
+                              ? current.filter((x) => x !== ticket.id)
+                              : [...current, ticket.id],
+                          )
+                        }
+                        className={saved.includes(ticket.id) ? "engaged" : ""}
+                      >
+                        <Bookmark
+                          size={15}
+                          fill={saved.includes(ticket.id) ? "currentColor" : "none"}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+          <section className="lower-grid">
+            <div className="panel leaderboard">
+              <div className="section-heading">
+                <div>
+                  <span className="section-kicker">THIS WEEK</span>
+                  <h2>Leaderboard</h2>
+                </div>
+                <button className="icon-button">
+                  <ArrowUpRight size={17} />
+                </button>
+              </div>
+              <div className="leader-head">
+                <span>CREATOR</span>
+                <span>WIN RATE</span>
+              </div>
+              {[
+                {
+                  rank: "01",
+                  name: "Mzee wa Odds",
+                  sub: "1,284 followers",
+                  rate: "82.6%",
+                  avatar: "MO",
+                },
+                {
+                  rank: "02",
+                  name: "Bongo Predictor",
+                  sub: "934 followers",
+                  rate: "79.1%",
+                  avatar: "BP",
+                },
+                {
+                  rank: "03",
+                  name: "Captain Tips",
+                  sub: "721 followers",
+                  rate: "74.8%",
+                  avatar: "CT",
+                },
+              ].map((item) => (
+                <div className="leader-row" key={item.rank}>
+                  <b className="rank">{item.rank}</b>
+                  <span className="avatar">{item.avatar}</span>
+                  <div className="leader-name">
+                    <b>{item.name}</b>
+                    <small>{item.sub}</small>
+                  </div>
+                  <strong>{item.rate}</strong>
                 </div>
               ))}
             </div>
-          </div>
-
-          <div className="whatsapp-gradient flex flex-col rounded-3xl p-6 text-white">
-            <span className="inline-block w-max rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.15em] text-white/70">
-              Huduma maalum
-            </span>
-            <h2 className="mt-4 font-display text-2xl font-semibold">Nunua tokeni moja kwa moja</h2>
-            <p className="mt-2 text-sm text-white/80">
-              Jaza tokeni zako kwa WhatsApp — haraka, salama, na msaada wa moja kwa moja.
-            </p>
-            <ul className="mt-5 space-y-2 text-sm text-white/90">
-              <li className="flex gap-2"><span className="text-lagoon-light">✓</span> Uwasilishaji wa haraka</li>
-              <li className="flex gap-2"><span className="text-lagoon-light">✓</span> Malipo salama</li>
-              <li className="flex gap-2"><span className="text-lagoon-light">✓</span> Msaada wa muda wote</li>
-            </ul>
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-6 flex items-center justify-center gap-2 rounded-xl bg-coral px-5 py-3 text-center text-sm font-bold text-ink transition hover:brightness-105"
-            >
-              <MessageCircle size={16} /> Nunua tokeni kwa WhatsApp
-            </a>
-            <p className="mt-3 text-[11px] text-white/60">Wastani wa kumaliza: chini ya dakika 2</p>
-          </div>
-        </section>
-
-        {/* Special services */}
-        <section className="rounded-3xl border border-border bg-gradient-to-br from-accent to-coral-soft/40 p-6 lg:p-8">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h2 className="font-display text-xl font-semibold">Huduma maalum</h2>
-              <p className="text-xs text-muted-foreground">Huduma za ziada kwa mahitaji maalum</p>
+            <div className="panel responsible">
+              <div className="responsible-icon">
+                <ShieldCheck size={22} />
+              </div>
+              <span className="section-kicker">CHEZA KWA UWAZIBIKAJI</span>
+              <h2>
+                Betting ni burudani,
+                <br />
+                si chanzo cha kipato.
+              </h2>
+              <p>
+                Weka bajeti yako. Usifukuze hasara. Ukiwa na changamoto, zungumza na mtu
+                unayemwamini.
+              </p>
+              <button className="text-button">
+                Soma mwongozo <ArrowUpRight size={15} />
+              </button>
             </div>
-            <Link to="/msaada" className="flex items-center gap-1 text-sm font-semibold text-brand-deep hover:underline">
-              Zaidi <ArrowRight size={14} />
-            </Link>
+          </section>
+        </div>
+      </main>
+      {selections.length > 0 && (
+        <div className="slip-bar">
+          <div>
+            <span className="slip-dot" />
+            <b>Mkeka wako</b>
+            <small>
+              {selections.length} selection{selections.length > 1 ? "s" : ""}
+            </small>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {specialServices.slice(0, 3).map((item) => (
-              <a
-                key={item.slug}
-                href={whatsappUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-2xl border border-border bg-card p-5 transition hover:-translate-y-0.5"
-              >
-                <p className={`text-xs font-semibold uppercase ${item.tone === "coral" ? "text-coral" : "text-brand-deep"}`}>
-                  {item.note}
-                </p>
-                <p className="mt-2 text-sm font-semibold">{item.name}</p>
-              </a>
-            ))}
-          </div>
-        </section>
-
-        <footer className="flex flex-wrap items-center justify-between gap-3 pb-4 pt-2 text-xs text-muted-foreground">
-          <p>© 2026 Huduma za Mtandaoni — huduma salama, haraka na rahisi.</p>
-          <div className="flex gap-5">
-            <Link to="/msaada" className="hover:text-brand-deep">Msaada</Link>
-            <Link to="/arifa" className="hover:text-brand-deep">Arifa</Link>
-            <Link to="/huduma" className="hover:text-brand-deep">Huduma</Link>
-          </div>
-        </footer>
+          <strong>
+            {totalOdds.toFixed(2)} <small>Total odds</small>
+          </strong>
+          <button onClick={() => setShowTicket(true)}>
+            Fungua mkeka <ArrowUpRight size={15} />
+          </button>
+          <button className="close-slip" onClick={() => setSelections([])}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
+      {showTicket && (
+        <TicketModal
+          selections={selections}
+          totalOdds={totalOdds}
+          onClose={() => setShowTicket(false)}
+        />
+      )}
+      {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+    </div>
+  );
+}
+function Stat({
+  icon: Icon,
+  value,
+  label,
+  trend,
+  green = false,
+}: {
+  icon: typeof Users;
+  value: string;
+  label: string;
+  trend: string;
+  green?: boolean;
+}) {
+  return (
+    <div className="stat-card">
+      <div className={green ? "stat-icon green" : "stat-icon"}>
+        <Icon size={18} />
       </div>
-    </PortalShell>
+      <div>
+        <strong>{value}</strong>
+        <span>{label}</span>
+        <small className={green ? "green-text" : ""}>{trend}</small>
+      </div>
+    </div>
+  );
+}
+function TicketModal({
+  selections,
+  totalOdds,
+  onClose,
+}: {
+  selections: string[];
+  totalOdds: number;
+  onClose: () => void;
+}) {
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <div>
+            <span className="section-kicker">TICKET BUILDER</span>
+            <h2>Tengeneza mkeka</h2>
+          </div>
+          <button onClick={onClose}>
+            <X size={19} />
+          </button>
+        </div>
+        <div className="notice">
+          <ShieldCheck size={17} />
+          <span>
+            Matokeo halisi yataunganishwa kupitia Sports API baada ya kusanidi API key ya
+            production.
+          </span>
+        </div>
+        <label>
+          Kichwa cha mkeka
+          <input placeholder="Mfano: Weekend ya uhakika" />
+        </label>
+        <div className="modal-selections">
+          <div className="label-row">
+            <b>Selections</b>
+            <span>{selections.length} zimechaguliwa</span>
+          </div>
+          {selections.length ? (
+            selections.map((s) => (
+              <div className="selection-row" key={s}>
+                <span>{s}</span>
+                <b>1.65</b>
+              </div>
+            ))
+          ) : (
+            <div className="empty-slip">Chagua mechi kwenye board ili kuanza mkeka.</div>
+          )}
+        </div>
+        <div className="modal-total">
+          <span>Total odds</span>
+          <strong>{selections.length ? totalOdds.toFixed(2) : "—"}</strong>
+        </div>
+        <button
+          className="primary-button full"
+          onClick={() => toast.info("Usajili unahitajika kabla ya kuchapisha mkeka.")}
+        >
+          Hifadhi kama draft <ArrowUpRight size={16} />
+        </button>
+        <p className="modal-foot">Hutaweza kuchapisha mkeka bila kuingia kwenye akaunti.</p>
+      </div>
+    </div>
+  );
+}
+function LoginModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal login-modal" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose}>
+          <X size={19} />
+        </button>
+        <div className="login-mark">W</div>
+        <span className="section-kicker">KARIBU KWENYE JAMII</span>
+        <h2>Ingia kwenye akaunti</h2>
+        <p>Unda mikeka, fuatilia creators na shiriki tips zako.</p>
+        <label>
+          Barua pepe au username
+          <input placeholder="username@mfano.com" />
+        </label>
+        <label>
+          Password
+          <input type="password" placeholder="••••••••" />
+        </label>
+        <button
+          className="primary-button full"
+          onClick={() =>
+            toast.info("Authentication ya production itaunganishwa na provider salama.")
+          }
+        >
+          <LogIn size={16} /> Ingia
+        </button>
+        <button
+          className="link-button"
+          onClick={() => toast.info("Usajili utafunguliwa baada ya database/auth kuwekwa.")}
+        >
+          Huna akaunti? Jisajili
+        </button>
+      </div>
+    </div>
   );
 }

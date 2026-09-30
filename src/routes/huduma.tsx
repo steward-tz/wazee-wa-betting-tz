@@ -10,7 +10,11 @@ export const Route = createFileRoute("/huduma")({
   head: () => ({
     meta: [
       { title: "Huduma zote — Huduma za Mtandaoni" },
-      { name: "description", content: "Orodha kamili ya huduma za kiraia mtandaoni — NIDA, TIN, leseni, vyeti na zana za ziada." },
+      {
+        name: "description",
+        content:
+          "Orodha kamili ya huduma za kiraia mtandaoni — NIDA, TIN, leseni, vyeti na zana za ziada.",
+      },
       { property: "og:title", content: "Huduma zote — Huduma za Mtandaoni" },
       { property: "og:description", content: "Orodha kamili ya huduma za kiraia mtandaoni." },
       { property: "og:type", content: "website" },

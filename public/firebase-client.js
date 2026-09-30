@@ -13,6 +13,7 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   getFirestore,
   serverTimestamp,
   setDoc,
@@ -38,6 +39,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 let currentUser = null;
+let currentProfile = null;
 let selections = [];
 let registering = false;
 
@@ -72,9 +74,10 @@ function showAuthModal() {
     <span class="section-kicker">KARIBU KWENYE JAMII</span>
     <h2>${registering ? "Tengeneza akaunti" : "Ingia kwenye akaunti"}</h2>
     <p>Unda mikeka, fuatilia creators na shiriki tips zako.</p>
-    ${registering ? '<label>Jina lako<input data-name placeholder="Mzee wa Odds" /></label>' : ""}
+    ${registering ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label>First name<input data-first-name placeholder="Juma" /></label><label>Last name<input data-last-name placeholder="Mzee" /></label></div><label>Username<input data-username placeholder="mzee_wa_odds" /></label><label>Phone number<input data-phone type="tel" placeholder="+255 7XX XXX XXX" /></label>' : ""}
     <label>Barua pepe<input data-email type="email" placeholder="username@mfano.com" /></label>
-    <label>Password<input data-password type="password" placeholder="••••••••" /></label>
+    <label>Password<input data-password type="password" placeholder="Angalau herufi 8" /></label>
+    ${registering ? '<label>Confirm password<input data-confirm-password type="password" placeholder="Rudia password" /></label>' : ""}
     <p class="modal-error" data-error style="display:none"></p>
     <button class="primary-button full" data-submit>${registering ? "Jisajili" : "Ingia"}</button>
     <button class="ghost-button full" data-google>Endelea na Google</button>
@@ -91,21 +94,40 @@ function showAuthModal() {
   modal.querySelector("[data-submit]").addEventListener("click", async () => {
     const email = modal.querySelector("[data-email]").value.trim();
     const password = modal.querySelector("[data-password]").value;
-    const name = modal.querySelector("[data-name]")?.value.trim() || "";
+    const firstName = modal.querySelector("[data-first-name]")?.value.trim() || "";
+    const lastName = modal.querySelector("[data-last-name]")?.value.trim() || "";
+    const username = modal.querySelector("[data-username]")?.value.trim().toLowerCase() || "";
+    const phone = modal.querySelector("[data-phone]")?.value.trim() || "";
+    const confirmPassword = modal.querySelector("[data-confirm-password]")?.value || "";
     const error = modal.querySelector("[data-error]");
     error.style.display = "none";
     try {
+      if (registering) {
+        if (!firstName || !lastName || !username || !email || !phone || !password || !confirmPassword) throw new Error("Jaza fields zote za usajili.");
+        if (!/^[a-z0-9_]{3,24}$/.test(username)) throw new Error("Username iwe na herufi ndogo, namba au underscore (3–24).");
+        if (password.length < 8) throw new Error("Password iwe na angalau herufi 8.");
+        if (password !== confirmPassword) throw new Error("Password hazifanani.");
+        if (!/^\+?[0-9\s-]{9,18}$/.test(phone)) throw new Error("Weka namba ya simu iliyo sahihi.");
+        if ((await getDoc(doc(db, "usernames", username))).exists()) throw new Error("Username hiyo tayari inatumika.");
+      }
       const result = registering
         ? await createUserWithEmailAndPassword(auth, email, password)
         : await signInWithEmailAndPassword(auth, email, password);
-      if (registering && name) await updateProfile(result.user, { displayName: name });
+      const displayName = registering ? `${firstName} ${lastName}`.trim() : result.user.displayName || email.split("@")[0];
+      const existingProfile = registering ? null : await getDoc(doc(db, "users", result.user.uid));
+      const existingRole = existingProfile?.exists() ? existingProfile.data().role || "USER" : "USER";
+      if (registering) await updateProfile(result.user, { displayName });
       await setDoc(doc(db, "users", result.user.uid), {
         uid: result.user.uid,
         email: result.user.email,
-        displayName: result.user.displayName || name || email.split("@")[0],
+        firstName: registering ? firstName : result.user.displayName?.split(" ")[0] || displayName,
+        lastName: registering ? lastName : result.user.displayName?.split(" ").slice(1).join(" ") || "",
+        displayName,
+        ...(registering ? { username, phone, role: "USER" } : { role: existingRole }),
         updatedAt: serverTimestamp(),
         ...(registering ? { createdAt: serverTimestamp() } : {}),
       }, { merge: true });
+      if (registering) await setDoc(doc(db, "usernames", username), { uid: result.user.uid, username, createdAt: serverTimestamp() });
       closeModal();
       notify(registering ? "Akaunti imetengenezwa." : "Umeingia kwa mafanikio.");
     } catch (authError) {
@@ -141,8 +163,8 @@ function showAccountModal() {
     <button class="modal-close" data-close aria-label="Funga">×</button>
     <div class="login-mark">W</div>
     <span class="section-kicker">AKAUNTI YAKO</span>
-    <h2>${escapeHtml(currentUser.displayName || currentUser.email || "Mwanachama")}</h2>
-    <p>${escapeHtml(currentUser.email || "")}</p>
+    <h2>${escapeHtml(currentProfile?.displayName || currentUser.displayName || currentUser.email || "Mwanachama")}</h2>
+    <p>${escapeHtml(currentUser.email || "")} · Role: ${escapeHtml(currentProfile?.role || "USER")}</p>
     <label style="text-align:left">Profile image<input data-avatar type="file" accept="image/*" /></label>
     <button class="ghost-button full" data-upload>Upload picha</button>
     <button class="primary-button full" data-logout>Toka kwenye akaunti</button>
@@ -226,6 +248,8 @@ function wirePage() {
 
 onAuthStateChanged(auth, (user) => {
   currentUser = user;
+  currentProfile = null;
+  if (user) getDoc(doc(db, "users", user.uid)).then((snapshot) => { currentProfile = snapshot.exists() ? snapshot.data() : null; });
   document.querySelectorAll(".profile-button").forEach((button) => {
     const copy = button.querySelector(".profile-copy");
     if (copy) {

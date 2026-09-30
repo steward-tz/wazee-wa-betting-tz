@@ -13,6 +13,10 @@ Jukwaa la Tanzania la betting tips, mikeka na community ya michezo.
 - Firestore na Storage security rules ziko kwenye `firestore.rules` na `storage.rules`
 - Hakuna matokeo ya michezo yaliyobuniwa; sports results zitaingia kupitia API ya server-side
 
+## Phase 1 status
+
+Audit ya architecture na functionality imeandikwa kwenye [`AUDIT.md`](./AUDIT.md). Phase 1 sasa ina registration yenye profile fields kamili, username uniqueness, persistent Firebase session, user profile document na database-enforced roles za `USER`, `ADMIN` na `SUPER_ADMIN`.
+
 ## Kuendesha locally
 
 ```bash
@@ -37,6 +41,10 @@ Kisha hakikisha Firebase Console imewezeshwa:
 5. Authorized domain ya production: `steward-tz.github.io`
 
 Firebase web API key si credential ya server; usalama unatokana na Authentication na rules. Usitie service-account private key kwenye frontend.
+
+### Role assignment
+
+Account mpya hupewa `role: "USER"` na user hawezi kubadilisha role yake kupitia client. Ili kumteua Admin, fungua Firestore Console na ubadilishe field ya `users/{uid}.role` kuwa `ADMIN`; kwa full control tumia `SUPER_ADMIN`. Rules ndizo zinazotekeleza access, si jina la username au button ya frontend.
 
 ## Production integrations zinazohitajika
 

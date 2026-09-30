@@ -55,15 +55,25 @@ export function subscribeToAuth(callback: (user: User | null) => void) {
   return auth ? onAuthStateChanged(auth, callback) : () => undefined;
 }
 
-export async function registerWithEmail(email: string, password: string, displayName: string) {
+export async function registerWithEmail(
+  email: string,
+  password: string,
+  profile: { firstName: string; lastName: string; username: string; phone: string },
+) {
   const auth = getFirebaseAuth();
   if (!auth) throw new Error("Firebase Auth inapatikana kwenye browser pekee.");
   const result = await createUserWithEmailAndPassword(auth, email, password);
-  if (displayName.trim()) await updateProfile(result.user, { displayName: displayName.trim() });
+  const displayName = `${profile.firstName} ${profile.lastName}`.trim();
+  if (displayName) await updateProfile(result.user, { displayName });
   await setDoc(doc(firestore, "users", result.user.uid), {
     uid: result.user.uid,
     email: result.user.email,
-    displayName: displayName.trim() || email.split("@")[0],
+    firstName: profile.firstName,
+    lastName: profile.lastName,
+    username: profile.username,
+    phone: profile.phone,
+    displayName: displayName || email.split("@")[0],
+    role: "USER",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

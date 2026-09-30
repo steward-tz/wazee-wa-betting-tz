@@ -726,7 +726,12 @@ function LoginModal({
             setLoading(true);
             try {
               const account = registering
-                ? await registerWithEmail(email, password, displayName)
+                ? await registerWithEmail(email, password, {
+                    firstName: displayName.split(" ")[0] || email.split("@")[0],
+                    lastName: displayName.split(" ").slice(1).join(" "),
+                    username: email.split("@")[0],
+                    phone: "",
+                  })
                 : await loginWithEmail(email, password);
               onUser(account);
               toast.success(registering ? "Akaunti imetengenezwa." : "Umeingia kwa mafanikio.");

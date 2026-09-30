@@ -46,6 +46,8 @@ Firebase web API key si credential ya server; usalama unatokana na Authenticatio
 
 Account mpya hupewa `role: "USER"` na user hawezi kubadilisha role yake kupitia client. Kwa account yako ya **SUPER_ADMIN**: fungua Firebase Console → Authentication → Users, nakili UID ya account yako, fungua Firestore → `users` → document yenye UID hiyo, kisha weka field ya string `role` kuwa `SUPER_ADMIN`. Kwa Admin wa kawaida tumia `ADMIN`. Rules ndizo zinazotekeleza access, si jina la username au button ya frontend. Usimpe user wa kawaida write access ya kubadilisha role.
 
+Usihifadhi password kwenye source code, GitHub, Firestore au frontend. Username ya production inapaswa kuwa lowercase letters, numbers au underscore; mfano `steward_tz`. Username yenye `$` na space kama `$teward Tz` haitapita validation ya usajili.
+
 ## Production integrations zinazohitajika
 
 Ili kukamilisha platform ya production kulingana na brief, ongeza backend/database/auth na secrets hizi kupitia hosting provider (usiweke kwenye frontend):

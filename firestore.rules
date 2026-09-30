@@ -9,16 +9,20 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == userId;
     }
 
+    function roleOf(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.role;
+    }
+
     function isAdmin() {
       return signedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['ADMIN', 'SUPER_ADMIN'];
+        && roleOf(request.auth.uid) in ['ADMIN', 'SUPER_ADMIN'];
     }
 
     function isSuperAdmin() {
       return signedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'SUPER_ADMIN';
+        && roleOf(request.auth.uid) == 'SUPER_ADMIN';
     }
 
     match /users/{userId} {
@@ -26,8 +30,13 @@ service cloud.firestore {
       allow create: if isOwner(userId)
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.role == 'USER';
-      allow update: if isAdmin()
-        || (isOwner(userId) && request.resource.data.uid == resource.data.uid
+      // Only SUPER_ADMIN may assign SUPER_ADMIN or change a SUPER_ADMIN role.
+      allow update: if isSuperAdmin()
+        || (isAdmin()
+          && resource.data.role != 'SUPER_ADMIN'
+          && request.resource.data.role in ['USER', 'ADMIN'])
+        || (isOwner(userId)
+          && request.resource.data.uid == resource.data.uid
           && request.resource.data.role == resource.data.role);
       allow delete: if isSuperAdmin();
 
@@ -81,8 +90,9 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // SUPER_ADMIN has full database control, including future system collections.
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if isSuperAdmin();
     }
   }
 }

@@ -33,7 +33,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build production bundle
         run: pnpm run build
-      - name: Create static Pages entrypoint
+      - name: Create static Pages entrypoint from SSR HTML
         shell: bash
         run: |
           set -euo pipefail
@@ -41,23 +41,26 @@ jobs:
           js_file=$(find .output/public/assets -maxdepth 1 -name 'index-*.js' -printf '%f\n' | head -1)
           test -n "$css_file"
           test -n "$js_file"
-          cat > .output/public/index.html <<HTML
-          <!doctype html>
-          <html lang="sw">
-            <head>
-              <meta charset="UTF-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-              <meta name="description" content="Wazee wa Betting TZ — tips, mikeka na jamii ya michezo Tanzania." />
-              <meta name="theme-color" content="#071714" />
-              <title>Wazee wa Betting TZ</title>
-              <link rel="stylesheet" href="./assets/$css_file" />
-            </head>
-            <body>
-              <div id="root"></div>
-              <script type="module" src="./assets/$js_file"></script>
-            </body>
-          </html>
-          HTML
+          pnpm run dev --host 127.0.0.1 --port 4174 >/tmp/wazee-pages-vite.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4174/ >/tmp/wazee-ssr.html; then break; fi
+            sleep 1
+          done
+          test -s /tmp/wazee-ssr.html
+          CSS_FILE="$css_file" JS_FILE="$js_file" python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          html = Path('/tmp/wazee-ssr.html').read_text()
+          html = re.sub(r'<link[^>]+(?:/src/styles\.css|/@tanstack-start/styles\.css|/@id/virtual:tanstack-start-dev-client-entry)[^>]*>', '', html)
+          html = re.sub(r'<script[^>]+/@id/virtual:tanstack-start-dev-client-entry[^>]*>\s*</script>', '', html)
+          css = os.environ['CSS_FILE']
+          js = os.environ['JS_FILE']
+          html = html.replace('</head>', f'<link rel="stylesheet" href="./assets/{css}" /></head>')
+          html = html.replace('</body>', f'<script type="module" src="./assets/{js}"></script></body>')
+          Path('.output/public/index.html').write_text(html)
+          PY
           cp .output/public/index.html .output/public/404.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

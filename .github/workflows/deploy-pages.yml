@@ -38,9 +38,7 @@ jobs:
         run: |
           set -euo pipefail
           css_file=$(find .output/public/assets -maxdepth 1 -name 'styles-*.css' -printf '%f\n' | head -1)
-          js_file=$(find .output/public/assets -maxdepth 1 -name 'index-*.js' -printf '%f\n' | head -1)
           test -n "$css_file"
-          test -n "$js_file"
           pnpm run dev --host 127.0.0.1 --port 4174 >/tmp/wazee-pages-vite.log 2>&1 &
           vite_pid=$!
           trap 'kill "$vite_pid" 2>/dev/null || true' EXIT
@@ -49,16 +47,15 @@ jobs:
             sleep 1
           done
           test -s /tmp/wazee-ssr.html
-          CSS_FILE="$css_file" JS_FILE="$js_file" python3 - <<'PY'
+          CSS_FILE="$css_file" python3 - <<'PY'
           import os, re
           from pathlib import Path
           html = Path('/tmp/wazee-ssr.html').read_text()
           html = re.sub(r'<link[^>]+(?:/src/styles\.css|/@tanstack-start/styles\.css|/@id/virtual:tanstack-start-dev-client-entry)[^>]*>', '', html)
           html = re.sub(r'<script[^>]+/@id/virtual:tanstack-start-dev-client-entry[^>]*>\s*</script>', '', html)
           css = os.environ['CSS_FILE']
-          js = os.environ['JS_FILE']
           html = html.replace('</head>', f'<link rel="stylesheet" href="./assets/{css}" /></head>')
-          html = html.replace('</body>', f'<script type="module" src="./assets/{js}"></script></body>')
+          html = re.sub(r'<script[^>]+type="module"[^>]*>\s*</script>', '', html)
           Path('.output/public/index.html').write_text(html)
           PY
           cp .output/public/index.html .output/public/404.html

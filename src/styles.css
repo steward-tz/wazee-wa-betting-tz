@@ -990,6 +990,56 @@ select:focus-visible {
   font-size: 10px;
   line-height: 1.4;
 }
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 18px 0;
+}
+.dashboard-stats .stat-card {
+  min-height: 58px;
+  padding: 10px;
+}
+.dashboard-stats .stat-card strong {
+  font-size: 16px;
+}
+.dashboard-stats .stat-card span {
+  font-size: 9px;
+}
+.dashboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.dashboard-actions button {
+  flex: 1;
+  min-width: 110px;
+}
+.dashboard-section {
+  border-top: 1px solid var(--line);
+  padding-top: 15px;
+  margin-top: 15px;
+}
+.profile-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.profile-fields label {
+  margin-top: 8px;
+}
+.profile-fields input:disabled {
+  opacity: 0.6;
+}
+@media (max-width: 560px) {
+  .dashboard-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .profile-fields {
+    grid-template-columns: 1fr;
+  }
+}
 .modal-foot {
   text-align: center;
   color: var(--muted);

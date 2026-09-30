@@ -44,7 +44,7 @@ Firebase web API key si credential ya server; usalama unatokana na Authenticatio
 
 ### Role assignment
 
-Account mpya hupewa `role: "USER"` na user hawezi kubadilisha role yake kupitia client. Ili kumteua Admin, fungua Firestore Console na ubadilishe field ya `users/{uid}.role` kuwa `ADMIN`; kwa full control tumia `SUPER_ADMIN`. Rules ndizo zinazotekeleza access, si jina la username au button ya frontend.
+Account mpya hupewa `role: "USER"` na user hawezi kubadilisha role yake kupitia client. Kwa account yako ya **SUPER_ADMIN**: fungua Firebase Console → Authentication → Users, nakili UID ya account yako, fungua Firestore → `users` → document yenye UID hiyo, kisha weka field ya string `role` kuwa `SUPER_ADMIN`. Kwa Admin wa kawaida tumia `ADMIN`. Rules ndizo zinazotekeleza access, si jina la username au button ya frontend. Usimpe user wa kawaida write access ya kubadilisha role.
 
 ## Production integrations zinazohitajika
 

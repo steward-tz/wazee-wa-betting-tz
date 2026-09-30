@@ -12,11 +12,16 @@ import {
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDoc,
+  getDocs,
   getFirestore,
+  query,
   serverTimestamp,
   setDoc,
+  updateDoc,
+  where,
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import {
   getDownloadURL,
@@ -155,43 +160,116 @@ function showAuthModal() {
   });
 }
 
-function showAccountModal() {
+async function readDashboardData(uid, publicOnly = false) {
+  const ticketQuery = publicOnly
+    ? query(collection(db, "tickets"), where("creatorId", "==", uid), where("visibility", "==", "PUBLIC"))
+    : query(collection(db, "tickets"), where("creatorId", "==", uid));
+  const draftsRequest = publicOnly ? Promise.resolve({ docs: [] }) : getDocs(collection(db, "users", uid, "drafts"));
+  const savedRequest = publicOnly ? Promise.resolve({ docs: [] }) : getDocs(query(collection(db, "savedTickets"), where("userId", "==", uid)));
+  const [profileSnapshot, ticketsSnapshot, draftsSnapshot, savedSnapshot, followersSnapshot, followingSnapshot] = await Promise.all([
+    getDoc(doc(db, "users", uid)),
+    getDocs(ticketQuery),
+    draftsRequest,
+    savedRequest,
+    getDocs(query(collection(db, "followers"), where("followedId", "==", uid))),
+    getDocs(query(collection(db, "followers"), where("followerId", "==", uid))),
+  ]);
+  const tickets = ticketsSnapshot.docs.map((ticket) => ({ id: ticket.id, ...ticket.data() }));
+  const statuses = tickets.map((ticket) => String(ticket.status || "PENDING").toUpperCase());
+  const won = statuses.filter((status) => status === "WON").length;
+  const lost = statuses.filter((status) => status === "LOST").length;
+  const pending = statuses.filter((status) => !["WON", "LOST"].includes(status)).length;
+  return {
+    profile: profileSnapshot.exists() ? profileSnapshot.data() : {},
+    tickets,
+    drafts: draftsSnapshot.docs.map((draft) => ({ id: draft.id, ...draft.data() })),
+    saved: savedSnapshot.docs.map((ticket) => ({ id: ticket.id, ...ticket.data() })),
+    won,
+    lost,
+    pending,
+    winRate: won + lost ? `${Math.round((won / (won + lost)) * 100)}%` : "—",
+    followers: followersSnapshot.size,
+    following: followingSnapshot.size,
+  };
+}
+
+function statMarkup(label, value) {
+  return `<div class="stat-card"><div><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div></div>`;
+}
+
+async function showDashboardModal() {
+  if (!currentUser) return showAuthModal();
   closeModal();
   const modal = document.createElement("div");
   modal.className = "modal-backdrop firebase-modal";
-  modal.innerHTML = `<div class="modal login-modal" data-modal-panel>
-    <button class="modal-close" data-close aria-label="Funga">×</button>
-    <div class="login-mark">W</div>
-    <span class="section-kicker">AKAUNTI YAKO</span>
-    <h2>${escapeHtml(currentProfile?.displayName || currentUser.displayName || currentUser.email || "Mwanachama")}</h2>
-    <p>${escapeHtml(currentUser.email || "")} · Role: ${escapeHtml(currentProfile?.role || "USER")}</p>
-    <label style="text-align:left">Profile image<input data-avatar type="file" accept="image/*" /></label>
-    <button class="ghost-button full" data-upload>Upload picha</button>
-    <button class="primary-button full" data-logout>Toka kwenye akaunti</button>
-  </div>`;
+  modal.innerHTML = '<div class="modal" data-modal-panel><p>Inapakia dashboard...</p></div>';
   document.body.appendChild(modal);
-  modal.addEventListener("click", (event) => {
-    if (event.target === modal || event.target.closest("[data-close]")) closeModal();
-  });
-  modal.querySelector("[data-logout]").addEventListener("click", async () => {
-    await signOut(auth);
-    closeModal();
-    notify("Umetoka kwenye akaunti.");
-  });
-  modal.querySelector("[data-upload]").addEventListener("click", async () => {
-    const file = modal.querySelector("[data-avatar]").files[0];
-    if (!file) return notify("Chagua picha kwanza.", "error");
-    if (file.size > 5 * 1024 * 1024) return notify("Picha iwe chini ya 5 MB.", "error");
-    try {
-      const imageRef = ref(storage, `users/${currentUser.uid}/avatar-${Date.now()}-${file.name}`);
-      await uploadBytes(imageRef, file, { contentType: file.type });
-      const photoURL = await getDownloadURL(imageRef);
-      await setDoc(doc(db, "users", currentUser.uid), { photoURL, updatedAt: serverTimestamp() }, { merge: true });
-      notify("Profile image imehifadhiwa.");
-    } catch (storageError) {
-      notify(storageError?.message || "Upload imeshindikana.", "error");
-    }
-  });
+  try {
+    const data = await readDashboardData(currentUser.uid);
+    currentProfile = data.profile;
+    const profile = data.profile;
+    modal.querySelector("[data-modal-panel]").innerHTML = `<div class="modal-head"><div><span class="section-kicker">USER DASHBOARD</span><h2>${escapeHtml(profile.displayName || currentUser.email || "Mwanachama")}</h2><p>@${escapeHtml(profile.username || "username")} · ${escapeHtml(profile.role || "USER")}</p></div><button data-close>×</button></div>
+      <div class="dashboard-stats">${statMarkup("Tickets", data.tickets.length)}${statMarkup("Won", data.won)}${statMarkup("Lost", data.lost)}${statMarkup("Pending", data.pending)}${statMarkup("Win rate", data.winRate)}${statMarkup("Followers", data.followers)}${statMarkup("Following", data.following)}</div>
+      <div class="dashboard-actions"><button class="primary-button" data-create-ticket>Create Ticket</button><button class="ghost-button" data-public-profile>Public profile</button><button class="ghost-button" data-logout>Logout</button></div>
+      <div class="dashboard-section"><span class="section-kicker">PROFILE</span><div class="profile-fields"><label>First name<input data-first-name value="${escapeHtml(profile.firstName || "")}" /></label><label>Last name<input data-last-name value="${escapeHtml(profile.lastName || "")}" /></label><label>Username<input value="${escapeHtml(profile.username || "")}" disabled /></label><label>Email<input value="${escapeHtml(profile.email || currentUser.email || "")}" disabled /></label><label>Phone<input data-phone value="${escapeHtml(profile.phone || "")}" /></label><label>Bio<input data-bio value="${escapeHtml(profile.bio || "")}" /></label></div><button class="ghost-button full" data-save-profile>Save profile</button></div>
+      <div class="dashboard-section"><span class="section-kicker">MY TICKETS</span><div data-ticket-list>${data.tickets.length ? data.tickets.map((ticket) => `<div class="selection-row"><span>${escapeHtml(ticket.title || "Untitled ticket")}</span><b>${escapeHtml(ticket.status || "PENDING")}</b></div>`).join("") : '<div class="empty-slip">Bado hujapublish ticket yoyote.</div>'}</div></div>
+      <div class="dashboard-section"><span class="section-kicker">SAVED TICKETS</span><div>${data.saved.length ? data.saved.map((ticket) => `<div class="selection-row"><span>${escapeHtml(ticket.title || ticket.ticketId || "Saved ticket")}</span></div>`).join("") : '<div class="empty-slip">Hakuna saved tickets bado.</div>'}</div></div>
+      <label style="text-align:left">Profile image<input data-avatar type="file" accept="image/*" /></label><button class="ghost-button full" data-upload>Upload picha</button>`;
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal || event.target.closest("[data-close]")) closeModal();
+    });
+    modal.querySelector("[data-logout]").addEventListener("click", async () => { await signOut(auth); closeModal(); notify("Umetoka kwenye akaunti."); });
+    modal.querySelector("[data-create-ticket]").addEventListener("click", showDraftModal);
+    modal.querySelector("[data-public-profile]").addEventListener("click", () => { if (profile.username) location.href = `?profile=${encodeURIComponent(profile.username)}`; else notify("Username haijawekwa.", "error"); });
+    modal.querySelector("[data-save-profile]").addEventListener("click", async () => {
+      const firstName = modal.querySelector("[data-first-name]").value.trim();
+      const lastName = modal.querySelector("[data-last-name]").value.trim();
+      const phone = modal.querySelector("[data-phone]").value.trim();
+      const bio = modal.querySelector("[data-bio]").value.trim();
+      if (!firstName || !lastName) return notify("First name na last name zinahitajika.", "error");
+      try { await updateDoc(doc(db, "users", currentUser.uid), { firstName, lastName, phone, bio, displayName: `${firstName} ${lastName}`, updatedAt: serverTimestamp() }); await updateProfile(currentUser, { displayName: `${firstName} ${lastName}` }); currentProfile = { ...currentProfile, firstName, lastName, phone, bio, displayName: `${firstName} ${lastName}` }; notify("Profile imehifadhiwa."); } catch (profileError) { notify(profileError?.message || "Profile haijahifadhiwa.", "error"); }
+    });
+    modal.querySelector("[data-upload]").addEventListener("click", async () => {
+      const file = modal.querySelector("[data-avatar]").files[0];
+      if (!file) return notify("Chagua picha kwanza.", "error");
+      if (file.size > 5 * 1024 * 1024) return notify("Picha iwe chini ya 5 MB.", "error");
+      try { const imageRef = ref(storage, `users/${currentUser.uid}/avatar-${Date.now()}-${file.name}`); await uploadBytes(imageRef, file, { contentType: file.type }); const photoURL = await getDownloadURL(imageRef); await updateDoc(doc(db, "users", currentUser.uid), { photoURL, updatedAt: serverTimestamp() }); currentProfile = { ...currentProfile, photoURL }; notify("Profile image imehifadhiwa."); } catch (storageError) { notify(storageError?.message || "Upload imeshindikana.", "error"); }
+    });
+  } catch (dashboardError) {
+    modal.querySelector("[data-modal-panel]").innerHTML = `<div class="modal-head"><h2>Dashboard haijapatikana</h2><button data-close>×</button></div><p class="modal-error">${escapeHtml(dashboardError?.message || "Jaribu tena baadaye.")}</p>`;
+    modal.querySelector("[data-close]").addEventListener("click", closeModal);
+  }
+}
+
+async function showPublicProfile(username) {
+  closeModal();
+  const modal = document.createElement("div");
+  modal.className = "modal-backdrop firebase-modal";
+  modal.innerHTML = '<div class="modal" data-modal-panel><p>Inapakia profile...</p></div>';
+  document.body.appendChild(modal);
+  try {
+    const usernameSnapshot = await getDoc(doc(db, "usernames", username.toLowerCase()));
+    if (!usernameSnapshot.exists()) throw new Error("Profile hii haikupatikana.");
+    const uid = usernameSnapshot.data().uid;
+    const data = await readDashboardData(uid, true);
+    const profile = data.profile;
+    const followId = currentUser ? `${currentUser.uid}_${uid}` : null;
+    const alreadyFollowing = followId ? (await getDoc(doc(db, "followers", followId))).exists() : false;
+    modal.querySelector("[data-modal-panel]").innerHTML = `<div class="modal-head"><div><span class="section-kicker">PUBLIC PROFILE</span><h2>${escapeHtml(profile.displayName || `@${username}`)}</h2><p>@${escapeHtml(profile.username || username)}</p></div><button data-close>×</button></div><p>${escapeHtml(profile.bio || "Mwanachama wa Wazee wa Betting TZ.")}</p><div class="dashboard-stats">${statMarkup("Tickets", data.tickets.length)}${statMarkup("Won", data.won)}${statMarkup("Lost", data.lost)}${statMarkup("Pending", data.pending)}${statMarkup("Win rate", data.winRate)}${statMarkup("Followers", data.followers)}${statMarkup("Following", data.following)}</div><button class="primary-button full" data-follow>${alreadyFollowing ? "Unfollow" : "Follow"}</button><div class="dashboard-section"><span class="section-kicker">MY TICKETS</span><div>${data.tickets.length ? data.tickets.map((ticket) => `<div class="selection-row"><span>${escapeHtml(ticket.title || "Untitled ticket")}</span><b>${escapeHtml(ticket.status || "PENDING")}</b></div>`).join("") : '<div class="empty-slip">Hakuna public tickets bado.</div>'}</div></div>`;
+    modal.addEventListener("click", (event) => { if (event.target === modal || event.target.closest("[data-close]")) closeModal(); });
+    modal.querySelector("[data-follow]").addEventListener("click", async () => {
+      if (!currentUser) return showAuthModal();
+      try {
+        if (alreadyFollowing) await deleteDoc(doc(db, "followers", followId));
+        else await setDoc(doc(db, "followers", followId), { followerId: currentUser.uid, followedId: uid, createdAt: serverTimestamp() });
+        notify(alreadyFollowing ? "Umeacha kufollow." : "Umeanza kufollow creator.");
+        await showPublicProfile(username);
+      } catch (followError) { notify(followError?.message || "Follow action imeshindikana.", "error"); }
+    });
+  } catch (profileError) {
+    modal.querySelector("[data-modal-panel]").innerHTML = `<div class="modal-head"><h2>Profile haijapatikana</h2><button data-close>×</button></div><p class="modal-error">${escapeHtml(profileError?.message || "Jaribu tena baadaye.")}</p>`;
+    modal.querySelector("[data-close]").addEventListener("click", closeModal);
+  }
 }
 
 function showDraftModal() {
@@ -234,7 +312,7 @@ function showDraftModal() {
 }
 
 function wirePage() {
-  document.querySelectorAll(".profile-button").forEach((button) => button.addEventListener("click", () => currentUser ? showAccountModal() : showAuthModal()));
+  document.querySelectorAll(".profile-button").forEach((button) => button.addEventListener("click", () => currentUser ? showDashboardModal() : showAuthModal()));
   document.querySelectorAll(".primary-button").forEach((button) => {
     if (button.closest(".modal")) return;
     button.addEventListener("click", showDraftModal);
@@ -244,6 +322,8 @@ function wirePage() {
     if (!selections.includes(label)) selections.push(label);
     notify("Selection imeongezwa kwenye mkeka.");
   }));
+  const profileUsername = new URLSearchParams(location.search).get("profile");
+  if (profileUsername) showPublicProfile(profileUsername);
 }
 
 onAuthStateChanged(auth, (user) => {

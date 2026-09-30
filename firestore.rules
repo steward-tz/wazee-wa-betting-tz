@@ -67,6 +67,13 @@ service cloud.firestore {
         || (signedIn() && resource.data.authorId == request.auth.uid);
     }
 
+    match /savedTickets/{savedTicketId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+      allow update: if false;
+    }
+
     match /followers/{followId} {
       allow read: if true;
       allow create: if signedIn() && request.resource.data.followerId == request.auth.uid;

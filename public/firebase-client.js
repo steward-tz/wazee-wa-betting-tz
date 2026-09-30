@@ -136,7 +136,9 @@ function showAuthModal() {
       closeModal();
       notify(registering ? "Akaunti imetengenezwa." : "Umeingia kwa mafanikio.");
     } catch (authError) {
-      error.textContent = authError?.message || "Imeshindikana kuingia.";
+      error.textContent = authError?.code === "permission-denied"
+        ? "Firestore Rules hazijaruhusu usajili. Publish firestore.rules kwenye Firebase project wazee-wa-betting-tz-e7183, kisha jaribu tena."
+        : authError?.message || "Imeshindikana kuingia.";
       error.style.display = "block";
     }
   });

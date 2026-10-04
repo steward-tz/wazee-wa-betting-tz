@@ -1,0 +1,30 @@
+name: Deploy Firebase Functions
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["functions/**"]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - name: Install functions dependencies
+        working-directory: functions
+        run: npm install
+      - name: Build
+        working-directory: functions
+        run: npm run build
+      - name: Write service account
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
+      - name: Deploy
+        working-directory: functions
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+          SPORTS_API_KEY: ${{ secrets.SPORTS_API_KEY }}
+          SPORTS_API_BASE_URL: ${{ secrets.SPORTS_API_BASE_URL }}
+        run: npx firebase-tools deploy --only functions --project wazee-wa-betting-tz-e7183 --non-interactive

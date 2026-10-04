@@ -4,9 +4,9 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { toast } from "sonner";
-import { AppShell } from "../components/app-shell";
-import { firestore, subscribeToAuth } from "../lib/firebase";
-import { addComment, followUser, getTicket, toggleLike, toggleSave } from "../lib/firestore";
+import { AppShell } from "../../components/app-shell";
+import { firestore, subscribeToAuth } from "../../lib/firebase";
+import { addComment, followUser, getTicket, toggleLike, toggleSave } from "../../lib/firestore";
 
 export const Route=createFileRoute("/tickets/$ticketId")({component:TicketDetails});
 function TicketDetails(){const{ticketId}=Route.useParams();const[user,setUser]=useState<User|null>(null);const[ticket,setTicket]=useState<any>(null);const[comments,setComments]=useState<any[]>([]);const[liked,setLiked]=useState(false);const[saved,setSaved]=useState(false);const[comment,setComment]=useState("");const[busy,setBusy]=useState(false);

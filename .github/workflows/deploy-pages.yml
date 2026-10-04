@@ -57,7 +57,7 @@ jobs:
           css = os.environ['CSS_FILE']
           html = html.replace('</head>', f'<link rel="stylesheet" href="./assets/{css}" /></head>')
           html = re.sub(r'<script[^>]+type="module"[^>]*>\s*</script>', '', html)
-          html = html.replace('</body>', '<script type="module" src="./firebase-client.js"></script></body>')
+          html = html.replace('</body>', '<script type="module" src="/wazee-wa-betting-tz/firebase-client.js"></script></body>')
           Path('.output/public/index.html').write_text(html)
           PY
           cp .output/public/index.html .output/public/404.html
